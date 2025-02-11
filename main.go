@@ -52,6 +52,25 @@ func processJSONForDisplay(data map[string]interface{}) map[string]interface{} {
 			} else {
 				result[key] = v
 			}
+		case []interface{}:
+			// For string arrays, always show them separately if they contain newlines
+			allStrings := true
+			shouldFormat := false
+			for _, item := range v {
+				if str, ok := item.(string); ok {
+					if strings.Contains(str, "\n") {
+						shouldFormat = true
+					}
+				} else {
+					allStrings = false
+					break
+				}
+			}
+			if allStrings && shouldFormat {
+				result[key] = "--- SEE BELOW ---"
+			} else {
+				result[key] = v
+			}
 		case map[string]interface{}:
 			result[key] = processJSONForDisplay(v)
 		default:
@@ -71,6 +90,30 @@ func collectEscapedValues(output *strings.Builder, data map[string]interface{}) 
 			unescaped = strings.ReplaceAll(unescaped, "\\\\", "\\")
 			if unescaped != v {
 				fmt.Fprintf(output, "\n### Field `%s` Unescaped Value:\n\n```python\n%s\n```\n", key, unescaped)
+			}
+		case []interface{}:
+			// For string arrays, format them if they contain newlines
+			allStrings := true
+			var stringsToFormat []string
+			shouldFormat := false
+
+			for _, item := range v {
+				if str, ok := item.(string); ok {
+					if strings.Contains(str, "\n") {
+						shouldFormat = true
+					}
+					stringsToFormat = append(stringsToFormat, str)
+				} else {
+					allStrings = false
+					break
+				}
+			}
+
+			if allStrings && shouldFormat {
+				fmt.Fprintf(output, "\n### Field `%s` Values:\n\n", key)
+				for i, str := range stringsToFormat {
+					fmt.Fprintf(output, "#### Item %d:\n```\n%s\n```\n", i+1, str)
+				}
 			}
 		case map[string]interface{}:
 			collectEscapedValues(output, v)
