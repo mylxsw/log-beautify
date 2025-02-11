@@ -1,9 +1,10 @@
-module github.com/mylxsw/log-beauty
+module github.com/mylxsw/log-beautify
 
 go 1.23.3
 
+require github.com/MichaelMure/go-term-markdown v0.1.4
+
 require (
-	github.com/MichaelMure/go-term-markdown v0.1.4 // indirect
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.7.1 // indirect
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
