@@ -23,9 +23,14 @@ func processLog(log string) string {
 		processedJSON := processJSONForDisplay(jsonData)
 		// Pretty print JSON
 		prettyJSON, _ := json.MarshalIndent(processedJSON, "", "  ")
+		// 处理多行文本，确保每行都正确缩进
+		jsonLines := strings.Split(string(prettyJSON), "\n")
 		output.WriteString("```json\n")
-		output.WriteString(string(prettyJSON))
-		output.WriteString("\n```\n")
+		for _, line := range jsonLines {
+			output.WriteString(line)
+			output.WriteString("\n")
+		}
+		output.WriteString("```\n")
 		// Collect unescaped values
 		collectEscapedValues(&output, jsonData)
 	} else {
@@ -44,21 +49,26 @@ func processJSONForDisplay(data map[string]interface{}) map[string]interface{} {
 	for key, value := range data {
 		switch v := value.(type) {
 		case string:
-			unescaped := strings.ReplaceAll(v, "\\n", "\n")
+			// 检查字符串是否包含换行符（包括转义的换行符）
+			unescaped := strings.ReplaceAll(v, "\\\\", "\\")
+			unescaped = strings.ReplaceAll(unescaped, "\\n", "\n")
+			unescaped = strings.ReplaceAll(unescaped, "\\r", "\r")
 			unescaped = strings.ReplaceAll(unescaped, "\\\"", "\"")
-			unescaped = strings.ReplaceAll(unescaped, "\\\\", "\\")
-			if unescaped != v {
+			if strings.Contains(unescaped, "\n") || len(unescaped) > 100 {
 				result[key] = "--- SEE BELOW ---"
 			} else {
 				result[key] = v
 			}
 		case []interface{}:
-			// For string arrays, always show them separately if they contain newlines
 			allStrings := true
 			shouldFormat := false
 			for _, item := range v {
 				if str, ok := item.(string); ok {
-					if strings.Contains(str, "\n") {
+					unescaped := strings.ReplaceAll(str, "\\\\", "\\")
+					unescaped = strings.ReplaceAll(unescaped, "\\n", "\n")
+					unescaped = strings.ReplaceAll(unescaped, "\\r", "\r")
+					unescaped = strings.ReplaceAll(unescaped, "\\\"", "\"")
+					if strings.Contains(unescaped, "\n") {
 						shouldFormat = true
 					}
 				} else {
@@ -85,24 +95,29 @@ func collectEscapedValues(output *strings.Builder, data map[string]interface{}) 
 	for key, value := range data {
 		switch v := value.(type) {
 		case string:
-			unescaped := strings.ReplaceAll(v, "\\n", "\n")
+			unescaped := strings.ReplaceAll(v, "\\\\", "\\")
+			unescaped = strings.ReplaceAll(unescaped, "\\n", "\n")
+			unescaped = strings.ReplaceAll(unescaped, "\\r", "\r")
 			unescaped = strings.ReplaceAll(unescaped, "\\\"", "\"")
-			unescaped = strings.ReplaceAll(unescaped, "\\\\", "\\")
-			if unescaped != v {
-				fmt.Fprintf(output, "\n### Field `%s` Unescaped Value:\n\n```python\n%s\n```\n", key, unescaped)
+			// 如果字符串包含换行符或长度超过100，则单独显示
+			if strings.Contains(unescaped, "\n") || len(unescaped) > 100 {
+				fmt.Fprintf(output, "\n### Field `%s`:\n\n```\n%s\n```\n", key, unescaped)
 			}
 		case []interface{}:
-			// For string arrays, format them if they contain newlines
 			allStrings := true
 			var stringsToFormat []string
 			shouldFormat := false
 
 			for _, item := range v {
 				if str, ok := item.(string); ok {
-					if strings.Contains(str, "\n") {
+					unescaped := strings.ReplaceAll(str, "\\\\", "\\")
+					unescaped = strings.ReplaceAll(unescaped, "\\n", "\n")
+					unescaped = strings.ReplaceAll(unescaped, "\\r", "\r")
+					unescaped = strings.ReplaceAll(unescaped, "\\\"", "\"")
+					if strings.Contains(unescaped, "\n") {
 						shouldFormat = true
 					}
-					stringsToFormat = append(stringsToFormat, str)
+					stringsToFormat = append(stringsToFormat, unescaped)
 				} else {
 					allStrings = false
 					break
